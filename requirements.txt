@@ -1,0 +1,11 @@
+# Step 1: data_collection.py
+yfinance==1.6.0
+pandas==3.0.5
+
+# Step 5: train_model.py
+scikit-learn==1.9.0
+xgboost==3.4.1
+
+# Frontend demo: app.py
+fastapi==0.141.1
+uvicorn==0.52.4
