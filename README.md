@@ -5,8 +5,6 @@ returns a **BUY / SELL** call with a confidence percentage — plus a web UI
 to demo it. Built as a portfolio project to show a complete ML pipeline
 (raw data → features → training → serving → UI), not just a notebook.
 
-> **Not investment advice.** This is a demonstration of an ML engineering
-> pipeline. See [Honest limitations](#honest-limitations) below.
 
 ## How it works
 
@@ -93,7 +91,7 @@ cd frontend && npm run dev
 Open the URL Vite prints (usually `http://localhost:5173`), type a ticker
 (e.g. `MSFT`), and click Analyze.
 
-## Honest limitations
+## Limitations
 
 - **~50% test accuracy.** With only two features and ~290 training
   examples, the model is close to a coin flip on held-out data. The
