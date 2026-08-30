@@ -25,7 +25,7 @@ inference.py            → loads the trained model, scores any ticker live
 app.py                  → FastAPI wrapper exposing GET /score/{ticker}
         ↓
 frontend/                → React (Vite) UI that calls the API and shows a
-                          color-coded result card
+                          color-coded, animated result card (light/dark mode)
 ```
 
 Each stage does one job and hands its output to the next — see
@@ -44,7 +44,9 @@ stock-recommender/
 │   ├── train_model.py
 │   ├── inference.py
 │   └── app.py                # FastAPI server
-├── frontend/                 # React (Vite) web UI
+├── frontend/                 # React (Vite) web UI — gradient card layout,
+│                             #   clickable ticker chips, confidence meter,
+│                             #   auto light/dark mode
 ├── data/processed/           # generated training_data.csv (gitignored)
 ├── models/                   # generated xgboost_v1.pkl (gitignored)
 └── requirements.txt
@@ -77,6 +79,13 @@ newer data):
 venv/bin/python src/build_training_data.py
 venv/bin/python src/train_model.py
 ```
+
+> `data/processed/` and `models/` are gitignored on purpose — they're
+> per-machine artifacts, not shared via git. If you're setting this up on
+> a second machine, run the two commands above there too rather than
+> copying the `.pkl` file over; that way the model is trained and loaded
+> by the same XGBoost version installed on that machine (mixing versions
+> across a copied `.pkl` triggers a pickle-compatibility warning).
 
 Then, in two terminals:
 
