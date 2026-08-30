@@ -1,10 +1,57 @@
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+
+  --bg-start: #eef2ff;
+  --bg-end: #f5f7fb;
+  --card-bg: #ffffff;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: #eef2ff;
+
+  --buy: #16a34a;
+  --buy-soft: #f0fdf4;
+  --sell: #dc2626;
+  --sell-soft: #fef2f2;
+  --hold: #6b7280;
+  --hold-soft: #f3f4f6;
+
   color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-start: #1e1b4b;
+    --bg-end: #111827;
+    --card-bg: #1f2937;
+    --text: #f3f4f6;
+    --text-muted: #9ca3af;
+    --border: #374151;
+    --accent: #818cf8;
+    --accent-hover: #a5b4fc;
+    --accent-soft: rgba(129, 140, 248, 0.12);
+
+    --buy: #4ade80;
+    --buy-soft: rgba(74, 222, 128, 0.1);
+    --sell: #f87171;
+    --sell-soft: rgba(248, 113, 113, 0.1);
+    --hold: #9ca3af;
+    --hold-soft: rgba(156, 163, 175, 0.1);
+
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: #f4f5f7;
-  color: #111827;
+  font-family: var(--font);
+  color: var(--text);
+  background: linear-gradient(160deg, var(--bg-start), var(--bg-end));
+  min-height: 100vh;
 }
