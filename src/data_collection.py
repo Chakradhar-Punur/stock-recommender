@@ -1,46 +1,8 @@
-"""
-data_collection.py
--------------------
-First stage of the pipeline: pull raw market data from Yahoo Finance via
-the `yfinance` library. Nothing here is ML-specific yet — this module's
-only job is "given a ticker, hand back clean price history + fundamentals".
-
-Keeping this isolated (rather than inlining yf calls in feature/model code)
-means we can later swap the data source (e.g. a paid API) without touching
-anything downstream.
-"""
-
 import yfinance as yf
 import pandas as pd
 
 
 def get_stock_data(ticker: str, period: str = "2y") -> dict:
-    """
-    Fetch historical OHLCV price data and key fundamentals for a ticker.
-
-    Parameters
-    ----------
-    ticker : str
-        Stock ticker symbol, e.g. "MSFT".
-    period : str
-        How far back to pull history. Uses yfinance's shorthand
-        ("1y", "2y", "5y", "max", ...) rather than explicit start/end
-        dates — simpler call site, and "2y" stays relative to today
-        every time this runs (important later when we resample training
-        data over many points in time).
-
-    Returns
-    -------
-    dict with keys:
-        "history" : pd.DataFrame  — daily OHLCV, empty DataFrame on failure
-        "info"    : dict          — subset of yfinance's `.info` (P/E, market cap)
-        "ticker"  : str           — echoed back for convenience downstream
-
-    Why return a dict instead of just the DataFrame: every caller down the
-    pipeline (features, training data builder) needs *both* price history
-    and fundamentals together, so bundling them avoids two separate calls
-    (and two separate places that can fail) at every call site.
-    """
     try:
         stock = yf.Ticker(ticker)
 
