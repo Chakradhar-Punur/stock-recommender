@@ -1,18 +1,3 @@
-"""
-baseline_model.py
-------------------
-A deliberately simple, rule-based recommendation function. This is NOT the
-ML model — it's the baseline we'll compare the trained XGBoost model
-against later. Without a baseline, "our model gets 62% accuracy" is a
-meaningless number; "our model beats a simple rule-based baseline by 8
-points" is a claim you can actually defend in an interview.
-
-The rule combines the two 0-1 scores from features.py with equal weights
-into a single composite score, then thresholds it into BUY/HOLD/SELL.
-Equal weighting is a starting assumption, not a tuned result — flagging
-that explicitly here so it's obvious this is meant to be superseded.
-"""
-
 from features import calculate_momentum_score, calculate_valuation_score
 
 

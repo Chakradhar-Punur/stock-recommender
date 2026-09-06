@@ -4,12 +4,6 @@ import "./App.css";
 
 const EXAMPLE_TICKERS = ["MSFT", "AAPL", "GOOGL"];
 
-/**
- * The whole app is one screen: a ticker input, an Analyze button, and a
- * result area that's always in exactly one of four states — idle,
- * loading, error, or showing a result. Small enough that splitting into
- * more components would just add indirection without real benefit.
- */
 function App() {
   const [ticker, setTicker] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -103,12 +97,7 @@ function App() {
   );
 }
 
-/**
- * The color-coded output card — green for BUY, gray for HOLD, red for
- * SELL, with a confidence meter bar. (In practice the current model only
- * ever returns BUY/SELL, never HOLD, but the gray fallback stays here in
- * case that changes later.)
- */
+
 function ResultCard({ result }) {
   const tone =
     result.recommendation === "BUY" ? "buy" : result.recommendation === "SELL" ? "sell" : "hold";

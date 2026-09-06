@@ -27,6 +27,8 @@ fundamentals API with history).
 """
 
 import time
+from typing import cast
+
 import pandas as pd
 
 from data_collection import get_stock_data
@@ -55,13 +57,19 @@ def _price_row_asof(hist: pd.DataFrame, date: pd.Timestamp) -> pd.Series | None:
     exists (e.g. `date` is before the start of `hist`).
     """
     row = hist.asof(date)
-    if row is None or pd.isna(row.get("Close")):
+    # `.asof()` is typed loosely (it can return a DataFrame if given a
+    # list-like index, or NaT/NA sentinels), so narrow with isinstance
+    # rather than a plain `is None` check — this also satisfies the type
+    # checker instead of just working at runtime.
+    if not isinstance(row, pd.Series):
+        return None
+    if bool(pd.isna(row.get("Close"))):
         return None
     return row
 
 
 def build_training_dataset(
-    tickers: list[str] = None,
+    tickers: list[str] | None = None,
     lookback_years: int = LOOKBACK_YEARS,
     sample_frequency_months: int = SAMPLE_FREQUENCY_MONTHS,
     forward_months: int = FORWARD_MONTHS,
@@ -123,7 +131,10 @@ def build_training_dataset(
         while sample_date <= sample_end:
             row_at_T = _price_row_asof(hist, sample_date)
             if row_at_T is not None:
-                actual_T = row_at_T.name  # actual trading-day timestamp used
+                # `.name` on a Series is typed as generic `Hashable` since a
+                # Series can be indexed by anything — cast back to Timestamp,
+                # which is what it actually is here (hist has a DatetimeIndex).
+                actual_T = cast(pd.Timestamp, row_at_T.name)
                 hist_upto_T = hist.loc[:actual_T]
                 price_T = row_at_T["Close"]
 
@@ -132,13 +143,14 @@ def build_training_dataset(
 
                 # Guard against `asof` silently returning a stale (too-early)
                 # row when we don't actually have `forward_months` of future
-                # data yet — only accept rows genuinely close to the target date.
-                has_real_future_data = (
+                # data yet — only accept rows genuinely close to the target
+                # date. Checked inline (not as a separate bool) so the type
+                # checker can narrow row_future to non-None inside the block.
+                if (
                     row_future is not None
                     and hist.index.max() >= future_date - pd.Timedelta(days=10)
-                )
-
-                if has_real_future_data and price_T > 0:
+                    and price_T > 0
+                ):
                     price_future = row_future["Close"]
                     forward_return = (price_future - price_T) / price_T
                     label = int(forward_return >= return_threshold)
