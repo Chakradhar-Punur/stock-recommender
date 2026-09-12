@@ -14,50 +14,29 @@ limitations, not just the flattering numbers.
 ## Architecture
 
 ```
-data_collection.py ──► fetches price history + fundamentals (yfinance)
-        │
-        ▼
-scoring/ ─────────────► 5 component scores, each 0-1:
-        │                 valuation.py  (P/E, PEG, debt-to-equity)
-        │                 growth.py     (quarterly revenue/earnings trend)
-        │                 momentum.py   (30-day price trend + RSI)
-        │                 quality.py    (ROE, margin, free cash flow)
-        │                 risk.py       (volatility, beta)
-        ▼
-build_training_data.py ─► samples 10 large-cap tickers every ~3 months over
-        │                 ~7 years, labels each point: did the stock beat
-        │                 +10% return over the following 12 months?
-        ▼
-train_model.py ────────► trains XGBoost with a TIME-BASED train/test split
-        │                 (no lookahead bias) — see docs/CODE_NOTES.md
-        ▼
-backtest.py ────────────► walk-forward backtest: retrains at every historical
-        │                 snapshot, reports accuracy/win-rate/Sharpe/drawdown
-        │                 vs. S&P 500, broken down by year
-        ▼
-inference.py ───────────► loads the trained model, scores any ticker live
-        ▼
-explain.py ─────────────► turns a ticker's 5 scores into "key driver" /
-        │                 "biggest risk" plain-English sentences
-        ▼
-app.py ─────────────────► FastAPI: GET /score/{ticker}, GET /health,
-        │                 1-hour in-memory cache, CORS enabled
-        ▼
-frontend/ ──────────────► React (Vite) — ticker search, color-coded
-                          recommendation card, 5-score bar chart (recharts),
-                          explanation section, loading/error states
+data_collection.py  → fetch price + fundamentals (yfinance)
+        ↓
+scoring/             → 5 scores: valuation, growth, momentum, quality, risk
+        ↓
+build_training_data.py → sample tickers, label by forward return
+        ↓
+train_model.py       → train XGBoost (time-based split)
+        ↓
+backtest.py           → walk-forward backtest vs S&P 500
+        ↓
+inference.py          → score any ticker live
+        ↓
+explain.py            → key driver / biggest risk text
+        ↓
+app.py                → FastAPI: /score, /health
+        ↓
+frontend/             → React UI
 ```
 
 `baseline_model.py` is a separate, deliberately "dumb" rule-based
 BUY/HOLD/SELL (simple average of momentum + valuation, fixed thresholds) —
 not the ML model. It exists purely as a comparison bar: "beats a naive
 average by N points" is a defensible claim on its own.
-
-Every design decision above — why time-based splits, why these specific
-score weights, why RSI is scored the way it is, why the backtest reports
-two different Sharpe ratios — is documented in
-[docs/CODE_NOTES.md](docs/CODE_NOTES.md). Source files are kept
-comment-free on purpose; that doc is where the reasoning lives.
 
 ## Project structure
 
@@ -81,9 +60,9 @@ stock-recommender/
 │   └── app.py                 # FastAPI server
 ├── frontend/                  # React (Vite) — see frontend/README.md
 ├── docs/
-│   └── CODE_NOTES.md          # design rationale for every file above
-├── data/processed/            # generated training_data.csv (gitignored)
-├── models/                    # generated xgboost_v1.pkl (gitignored)
+│   └── CODE_NOTES.md
+├── data/processed/            # generated training_data.csv
+├── models/                    # generated xgboost_v1.pkl
 └── requirements.txt
 ```
 
@@ -187,7 +166,7 @@ regime shift the model's training data hadn't seen examples of yet at that
 point. 2022's own snapshots do noticeably better (0.575) because by then
 some bear-market examples existed in training.
 
-## Honest limitations
+## Limitations
 
 - **This is a small dataset.** ~290 rows (10 tickers × ~29 quarterly
   snapshots) trains a model with only ~230 rows in any given split. Phase 2
@@ -200,8 +179,7 @@ some bear-market examples existed in training.
   triple-counts overlapping 12-month-forward windows and reports an
   inflated Sharpe of 2.17. The honest calculation uses one non-overlapping
   return per calendar year (Sharpe 0.99) — correct methodology, but only 6
-  data points, so treat it as directionally useful, not precise. Full
-  writeup in `docs/CODE_NOTES.md` under `backtest.py`.
+  data points, so treat it as directionally useful, not precise.
 - **Valuation/growth/quality scores aren't point-in-time.** Free
   `yfinance` data only exposes *current* fundamentals, not historical P/E,
   quarterly financials, or ROE as they stood on a past date — so every
@@ -218,7 +196,6 @@ some bear-market examples existed in training.
   resets on restart, doesn't share state across multiple server processes.
   Fine for a local demo, a real explicit tradeoff not to build Redis for.
 - **No deployment yet.** Runs locally only — no Docker, no cloud hosting.
-  Deliberately out of scope until the pipeline itself was proven correct.
 
 ## Tech stack
 
