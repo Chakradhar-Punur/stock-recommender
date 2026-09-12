@@ -45,7 +45,7 @@ stock-recommender/
 ├── src/
 │   ├── data_collection.py     # fetch price history + fundamentals
 │   ├── features.py            # momentum / valuation primitives (shared)
-│   ├── scoring/                # the 5 component scores
+│   ├── scoring/               # the 5 component scores
 │   │   ├── valuation.py
 │   │   ├── growth.py
 │   │   ├── momentum.py
@@ -58,7 +58,7 @@ stock-recommender/
 │   ├── inference.py
 │   ├── explain.py             # key-driver / biggest-risk text
 │   └── app.py                 # FastAPI server
-├── frontend/                  # React (Vite) — see frontend/README.md
+├── frontend/                  # React — see frontend/README.md
 ├── docs/
 │   └── CODE_NOTES.md
 ├── data/processed/            # generated training_data.csv
