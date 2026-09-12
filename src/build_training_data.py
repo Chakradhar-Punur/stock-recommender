@@ -1,66 +1,31 @@
-"""
-build_training_data.py
------------------------
-Builds the labeled dataset the ML model (train_model.py) will learn from.
-
-For each ticker, we walk back through its price history and take a
-snapshot every ~3 months. At each snapshot date T we compute the same
-features a live prediction would use (momentum, valuation), then look
-12 months into T's future to see whether the stock's return beat a 10%
-threshold. That (features_at_T, beat_threshold) pair is one training row.
-
-IMPORTANT — this file deliberately does NOT split into train/test. We
-sample points chronologically across many years, but the split into
-"train" vs "test" happens later in train_model.py, sorted by date. Doing
-it there (not here) keeps this file focused on one job — assembling raw
-labeled data — and keeps the leakage-sensitive split logic in one place.
-
-KNOWN SIMPLIFICATION (worth calling out in an interview): yfinance's free
-`.info` endpoint only exposes *current* fundamentals, not point-in-time
-historical P/E. A fully rigorous dataset would use the P/E that was
-actually true at each historical snapshot date. Here we approximate by
-using each ticker's *current* P/E as a static valuation feature repeated
-across all of that ticker's historical rows. This is a real limitation,
-not an oversight — a production version would pull point-in-time
-fundamentals from a paid data vendor (e.g. Compustat, FactSet, or a
-fundamentals API with history).
-"""
-
+import os
 import time
 from typing import cast
 
 import pandas as pd
 
 from data_collection import get_stock_data
-from features import calculate_momentum_score, calculate_valuation_score
+from scoring.valuation import calculate_valuation_score
+from scoring.growth import calculate_growth_score
+from scoring.momentum import calculate_momentum_score
+from scoring.quality import calculate_quality_score
+from scoring.risk import calculate_risk_score
 
 
-# ~10 large-cap tickers spanning a few sectors (tech, financials, health,
-# consumer staples, energy) so the model doesn't just learn "tech go up".
 DEFAULT_TICKERS = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "META",
     "NVDA", "JPM", "JNJ", "PG", "XOM",
 ]
 
-SAMPLE_FREQUENCY_MONTHS = 3   # snapshot every ~3 months
-LOOKBACK_YEARS = 8            # how far back to sample from
-FORWARD_MONTHS = 12           # label horizon: return over the following year
-RETURN_THRESHOLD = 0.10       # "beat the market" bar: +10% over 12 months
-FETCH_PERIOD = "10y"          # need LOOKBACK_YEARS + FORWARD_MONTHS of history
+SAMPLE_FREQUENCY_MONTHS = 3
+LOOKBACK_YEARS = 8
+FORWARD_MONTHS = 12
+RETURN_THRESHOLD = 0.10
+FETCH_PERIOD = "10y"
 
 
 def _price_row_asof(hist: pd.DataFrame, date: pd.Timestamp) -> pd.Series | None:
-    """
-    Return the price row for the most recent trading day at-or-before
-    `date` (markets are closed on weekends/holidays, so we can't just
-    index by an arbitrary calendar date). Returns None if no such row
-    exists (e.g. `date` is before the start of `hist`).
-    """
     row = hist.asof(date)
-    # `.asof()` is typed loosely (it can return a DataFrame if given a
-    # list-like index, or NaT/NA sentinels), so narrow with isinstance
-    # rather than a plain `is None` check — this also satisfies the type
-    # checker instead of just working at runtime.
     if not isinstance(row, pd.Series):
         return None
     if bool(pd.isna(row.get("Close"))):
@@ -75,18 +40,6 @@ def build_training_dataset(
     forward_months: int = FORWARD_MONTHS,
     return_threshold: float = RETURN_THRESHOLD,
 ) -> pd.DataFrame:
-    """
-    Loop over `tickers`, sample price history every `sample_frequency_months`
-    over the past `lookback_years`, and build labeled rows of
-    (features at time T) -> (did the stock beat `return_threshold` return
-    over the following `forward_months`?).
-
-    Returns
-    -------
-    pd.DataFrame with columns:
-        ticker, sample_date, momentum_score, valuation_score,
-        forward_return, label   (label: 1 = beat threshold, 0 = did not)
-    """
     if tickers is None:
         tickers = DEFAULT_TICKERS
 
@@ -97,23 +50,19 @@ def build_training_dataset(
         data = get_stock_data(ticker, period=FETCH_PERIOD)
         hist = data["history"]
         info = data["info"]
+        financials = data["financials"]
 
         if hist.empty:
             print(f"[build_training_data] Skipping {ticker} — no price history.")
             continue
 
-        # Static valuation proxy for this ticker (see module docstring —
-        # this is today's P/E applied to every historical row, a known
-        # simplification of the free data source).
         valuation_score = calculate_valuation_score(info)
+        growth_score = calculate_growth_score(financials)
+        quality_score = calculate_quality_score(info)
 
         data_start = hist.index.min()
         data_end = hist.index.max()
 
-        # Earliest a sample can be taken: needs >=30 days of prior history
-        # for the momentum lookback. Latest: needs `forward_months` of
-        # *future* data still available to compute the label, otherwise
-        # we'd be guessing rather than labeling.
         sample_start = max(
             data_start + pd.Timedelta(days=35),
             data_end - pd.DateOffset(years=lookback_years),
@@ -131,9 +80,6 @@ def build_training_dataset(
         while sample_date <= sample_end:
             row_at_T = _price_row_asof(hist, sample_date)
             if row_at_T is not None:
-                # `.name` on a Series is typed as generic `Hashable` since a
-                # Series can be indexed by anything — cast back to Timestamp,
-                # which is what it actually is here (hist has a DatetimeIndex).
                 actual_T = cast(pd.Timestamp, row_at_T.name)
                 hist_upto_T = hist.loc[:actual_T]
                 price_T = row_at_T["Close"]
@@ -141,11 +87,6 @@ def build_training_dataset(
                 future_date = actual_T + pd.DateOffset(months=forward_months)
                 row_future = _price_row_asof(hist, future_date)
 
-                # Guard against `asof` silently returning a stale (too-early)
-                # row when we don't actually have `forward_months` of future
-                # data yet — only accept rows genuinely close to the target
-                # date. Checked inline (not as a separate bool) so the type
-                # checker can narrow row_future to non-None inside the block.
                 if (
                     row_future is not None
                     and hist.index.max() >= future_date - pd.Timedelta(days=10)
@@ -155,12 +96,16 @@ def build_training_dataset(
                     forward_return = (price_future - price_T) / price_T
                     label = int(forward_return >= return_threshold)
                     momentum_score = calculate_momentum_score(hist_upto_T)
+                    risk_score = calculate_risk_score(hist_upto_T, info)
 
                     all_rows.append({
                         "ticker": ticker,
                         "sample_date": actual_T.date().isoformat(),
-                        "momentum_score": momentum_score,
                         "valuation_score": valuation_score,
+                        "growth_score": growth_score,
+                        "momentum_score": momentum_score,
+                        "quality_score": quality_score,
+                        "risk_score": risk_score,
                         "forward_return": round(float(forward_return), 4),
                         "label": label,
                     })
@@ -169,9 +114,6 @@ def build_training_dataset(
             sample_date += pd.DateOffset(months=sample_frequency_months)
 
         print(f"[build_training_data]   -> {ticker_row_count} labeled samples")
-
-        # Be a polite API citizen — small pause between tickers to reduce
-        # the chance of hitting Yahoo's rate limiting.
         time.sleep(0.5)
 
     df = pd.DataFrame(all_rows)
@@ -181,8 +123,6 @@ def build_training_dataset(
 
 
 if __name__ == "__main__":
-    import os
-
     dataset = build_training_dataset()
 
     print(f"\n=== Training dataset summary ===")

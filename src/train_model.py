@@ -6,13 +6,13 @@ from sklearn.metrics import accuracy_score, classification_report
 from xgboost import XGBClassifier
 
 
-FEATURE_COLUMNS = ["momentum_score", "valuation_score"]
+FEATURE_COLUMNS = ["valuation_score", "growth_score", "momentum_score", "quality_score", "risk_score"]
 TARGET_COLUMN = "label"
 TRAIN_FRACTION = 0.8
+PHASE_1_BASELINE_ACCURACY = 0.533
 
 
 def load_dataset(csv_path: str) -> pd.DataFrame:
-    """Load the training CSV and parse dates for chronological sorting."""
     df = pd.read_csv(csv_path)
     df["sample_date"] = pd.to_datetime(df["sample_date"])
     return df.sort_values("sample_date").reset_index(drop=True)
@@ -28,6 +28,16 @@ def time_based_split(df: pd.DataFrame, train_fraction: float = TRAIN_FRACTION):
     return train_df, test_df, cutoff_date
 
 
+def build_model() -> XGBClassifier:
+    return XGBClassifier(
+        n_estimators=100,
+        max_depth=3,
+        learning_rate=0.1,
+        eval_metric="logloss",
+        random_state=42,
+    )
+
+
 def train_and_evaluate(df: pd.DataFrame):
     train_df, test_df, cutoff_date = time_based_split(df)
 
@@ -40,20 +50,17 @@ def train_and_evaluate(df: pd.DataFrame):
     print(f"  Test:  {len(test_df)} rows "
           f"({test_df['sample_date'].min().date()} to {test_df['sample_date'].max().date()})")
 
-    model = XGBClassifier(
-        n_estimators=100,
-        max_depth=3,
-        learning_rate=0.1,
-        eval_metric="logloss",
-        random_state=42,
-    )
+    model = build_model()
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, target_names=["HOLD/SELL (0)", "BUY (1)"])
 
-    return model, {"accuracy": accuracy, "report": report}
+    importance = dict(zip(FEATURE_COLUMNS, model.feature_importances_))
+    importance = dict(sorted(importance.items(), key=lambda kv: kv[1], reverse=True))
+
+    return model, {"accuracy": accuracy, "report": report, "feature_importance": importance}
 
 
 def save_model(model, path: str):
@@ -78,7 +85,14 @@ if __name__ == "__main__":
         model, metrics = train_and_evaluate(dataset)
 
         print(f"\n=== Test set accuracy: {metrics['accuracy']:.3f} ===")
+        print(f"(Phase 1 baseline, momentum+valuation only: {PHASE_1_BASELINE_ACCURACY:.3f})")
+        print(f"Change vs. Phase 1: {metrics['accuracy'] - PHASE_1_BASELINE_ACCURACY:+.3f}")
+
         print(f"\n=== Classification report ===\n{metrics['report']}")
 
+        print("=== Feature importance ===")
+        for name, score in metrics["feature_importance"].items():
+            print(f"  {name}: {score:.3f}")
+
         save_model(model, model_path)
-        print(f"Model saved to {model_path}")
+        print(f"\nModel saved to {model_path}")

@@ -1,8 +1,26 @@
 import { useState } from "react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 import { fetchRecommendation } from "./api";
 import "./App.css";
 
 const EXAMPLE_TICKERS = ["MSFT", "AAPL", "GOOGL"];
+
+const SCORE_LABELS = {
+  valuation_score: "Valuation",
+  growth_score: "Growth",
+  momentum_score: "Momentum",
+  quality_score: "Quality",
+  risk_score: "Risk",
+};
 
 function App() {
   const [ticker, setTicker] = useState("");
@@ -119,6 +137,65 @@ function ResultCard({ result }) {
         </div>
         <span className="confidence-label">{result.confidence.toFixed(1)}%</span>
       </div>
+
+      {result.scores && <ScoresChart scores={result.scores} />}
+
+      {result.explanation && (
+        <div className="explanation">
+          <div className="explanation-row">
+            <span className="explanation-label">Key driver</span>
+            <span className="explanation-text">{result.explanation.key_driver}</span>
+          </div>
+          <div className="explanation-row">
+            <span className="explanation-label">Biggest risk</span>
+            <span className="explanation-text">{result.explanation.biggest_risk}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScoresChart({ scores }) {
+  const data = Object.entries(scores).map(([key, value]) => ({
+    name: SCORE_LABELS[key] ?? key,
+    value,
+  }));
+
+  return (
+    <div className="scores-chart">
+      <ResponsiveContainer width="100%" height={160}>
+        <BarChart data={data} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+            axisLine={{ stroke: "var(--border)" }}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 1]}
+            tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+            axisLine={false}
+            tickLine={false}
+            width={30}
+          />
+          <Tooltip
+            formatter={(value) => value.toFixed(2)}
+            contentStyle={{
+              background: "var(--card-bg)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+          />
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {data.map((entry) => (
+              <Cell key={entry.name} fill={entry.value >= 0.5 ? "var(--buy)" : "var(--sell)"} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

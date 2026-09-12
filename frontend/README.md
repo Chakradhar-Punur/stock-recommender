@@ -1,16 +1,22 @@
-# React + Vite
+# Stock Recommender — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React (Vite) UI for the Stock Recommender API. See the
+[root README](../README.md) for the full project, setup, and backtest
+results; see [../docs/CODE_NOTES.md](../docs/CODE_NOTES.md) for design
+notes on this frontend specifically.
 
-Currently, two official plugins are available:
+## Run it
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Needs the FastAPI backend running at `http://localhost:8000` (see the root
+README) — `src/api.js` is the only file that knows that URL.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Stack
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+React 19, Vite, recharts (5-score bar chart), plain CSS with light/dark
+mode via CSS custom properties (no Tailwind — see `docs/CODE_NOTES.md` for
+why).

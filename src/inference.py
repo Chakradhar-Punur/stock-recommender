@@ -2,14 +2,14 @@ import os
 import pickle
 
 from data_collection import get_stock_data
-from features import calculate_momentum_score, calculate_valuation_score
+from scoring import calculate_all_scores, SCORE_NAMES
 
 
 MODEL_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "models", "xgboost_v1.pkl")
 )
 
-FEATURE_COLUMNS = ["momentum_score", "valuation_score"]
+FEATURE_COLUMNS = SCORE_NAMES
 
 LABEL_NAMES = {0: "SELL", 1: "BUY"}
 
@@ -38,11 +38,8 @@ def predict(ticker: str, model=None) -> dict:
                 "error": f"No price data available for '{ticker}'.",
             }
 
-        momentum_score = calculate_momentum_score(data["history"])
-        valuation_score = calculate_valuation_score(data["info"])
-
-        # Model expects a 2D array: one row, columns in FEATURE_COLUMNS order.
-        X = [[momentum_score, valuation_score]]
+        scores = calculate_all_scores(data["history"], data["info"], data["financials"])
+        X = [[scores[name] for name in FEATURE_COLUMNS]]
 
         predicted_class = int(model.predict(X)[0])
         class_probabilities = model.predict_proba(X)[0]
@@ -52,6 +49,7 @@ def predict(ticker: str, model=None) -> dict:
             "ticker": ticker,
             "recommendation": LABEL_NAMES[predicted_class],
             "confidence": round(confidence, 1),
+            "scores": scores,
         }
 
     except FileNotFoundError as e:
