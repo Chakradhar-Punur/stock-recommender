@@ -14,23 +14,23 @@ limitations, not just the flattering numbers.
 ## Architecture
 
 ```
-data_collection.py  → fetch price + fundamentals (yfinance)
+data_collection.py     → fetch price + fundamentals (yfinance)
         ↓
-scoring/             → 5 scores: valuation, growth, momentum, quality, risk
+scoring/               → 5 scores: valuation, growth, momentum, quality, risk
         ↓
 build_training_data.py → sample tickers, label by forward return
         ↓
-train_model.py       → train XGBoost (time-based split)
+train_model.py         → train XGBoost (time-based split)
         ↓
-backtest.py           → walk-forward backtest vs S&P 500
+backtest.py            → walk-forward backtest vs S&P 500
         ↓
-inference.py          → score any ticker live
+inference.py           → score any ticker live
         ↓
-explain.py            → key driver / biggest risk text
+explain.py             → key driver / biggest risk text
         ↓
-app.py                → FastAPI: /score, /health
+app.py                 → FastAPI: /score, /health
         ↓
-frontend/             → React UI
+frontend/              → React UI
 ```
 
 `baseline_model.py` is a separate, deliberately "dumb" rule-based
