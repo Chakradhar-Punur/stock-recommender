@@ -59,8 +59,6 @@ stock-recommender/
 │   ├── explain.py             # key-driver / biggest-risk text
 │   └── app.py                 # FastAPI server
 ├── frontend/                  # React — see frontend/README.md
-├── docs/
-│   └── CODE_NOTES.md
 ├── data/processed/            # generated training_data.csv
 ├── models/                    # generated xgboost_v1.pkl
 └── requirements.txt
