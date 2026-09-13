@@ -2,8 +2,7 @@
 
 React (Vite) UI for the Stock Recommender API. See the
 [root README](../README.md) for the full project, setup, and backtest
-results; see [../docs/CODE_NOTES.md](../docs/CODE_NOTES.md) for design
-notes on this frontend specifically.
+results.
 
 ## Run it
 
@@ -18,5 +17,4 @@ README) — `src/api.js` is the only file that knows that URL.
 ## Stack
 
 React 19, Vite, recharts (5-score bar chart), plain CSS with light/dark
-mode via CSS custom properties (no Tailwind — see `docs/CODE_NOTES.md` for
-why).
+mode via CSS custom properties.
